@@ -20,6 +20,7 @@ typedef enum {SNT, WNT, WT, ST} FSM_STATE;
 
 uint32_t fsmTableSize;
 
+
 FSM_STATE FSM_Update(FSM_STATE curr_state, bool isTaken){
     if(curr_state == SNT){
         return (isTaken)? WNT : SNT;
@@ -51,13 +52,12 @@ typedef struct{
     bool isGlobalHist;
     bool isGlobalTable;
     SHARE_TYPE sharedType;
-
     FSM_STATE *FSM_global;
     FSM_STATE **FSM_local;
-    BTB_entry *btb_entry;
     SIM_stats sim_stats;
     uint8_t GHR;
     uint8_t *BHR;
+    BTB_entry *btb_entry;
 }BTB_t;
 
 static BTB_t *btb;
@@ -90,6 +90,7 @@ int BTB_Init(BTB_t *btb, unsigned btbSize, unsigned historySize, unsigned tagSiz
     btb->sim_stats.br_num = 0;
     btb->sim_stats.size = Sim_Stats_Size(btbSize, historySize, tagSize, isGlobalHist, isGlobalTable);
     btb->btb_entry = (BTB_entry*)malloc(sizeof(BTB_entry));
+    printf("malloced BTB entry\n");
     if(btb->btb_entry == NULL){
         return -1;
     }
@@ -99,6 +100,7 @@ int BTB_Init(BTB_t *btb, unsigned btbSize, unsigned historySize, unsigned tagSiz
 int Table_Init(double table_size){
     if(btb->isGlobalTable){
         btb->FSM_global = (FSM_STATE*)malloc(table_size*sizeof(FSM_STATE));
+        //printf("malloced FSM global\n");
         if(btb->FSM_global == NULL){
             return -1;
         }
@@ -108,11 +110,13 @@ int Table_Init(double table_size){
     }
     else{
         btb->FSM_local = (FSM_STATE**)malloc(table_size*sizeof(FSM_STATE*));
+        printf("malloced FSM local\n");
         if(btb->FSM_local == NULL){
             return -1;
         }
         for(int i=0; i<table_size; i++){
             btb->FSM_local[i] = (FSM_STATE*)malloc(table_size*sizeof(FSM_STATE));
+            printf("malloced FSM local\n");
             if(btb->FSM_local[i] == NULL){
             return -1;
         }
@@ -132,6 +136,7 @@ int Hist_Init(int size){
     }
     else{
         btb->BHR = (uint8_t*)malloc((size)*sizeof(uint8_t));
+        //printf("malloced BHR\n");
         if(btb->BHR == NULL){
             return -1;
         }
@@ -369,22 +374,31 @@ void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst){
 
 void BP_GetStats(SIM_stats *curStats){
     *curStats = btb->sim_stats;
-    
-    //free(btb->btb_entry);
-
-    /*if(!(btb->isGlobalTable)){
-        for(int i=0; i<(btb->BTB_size); i++){
-            free(btb->FSM_local[i]);
-        }
-        free(btb->FSM_local);
-    }
-    else{
-        free(btb->FSM_global);
-    }*/
 
     if(!(btb->isGlobalHist)){
         free(btb->BHR);
+        //printf("freeing BHR\n");
     }
+
+    if(!(btb->isGlobalTable)){
+        for(int i=0; i<(btb->BTB_size); i++){
+            //free(btb->FSM_local[i]);
+            printf("freeing FSM local\n");
+        }
+        //free(btb->FSM_local);
+        printf("freeing FSM local\n");
+    }
+    else{
+        //printf("freeing FSM global\n");
+        free(btb->FSM_global);
+    }
+
+    //printf("freeing BTB entry\n");
+    free(btb->btb_entry);
+
+
+
+
     free(btb);
     
 	return;
