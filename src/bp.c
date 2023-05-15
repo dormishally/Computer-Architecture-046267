@@ -60,7 +60,7 @@ typedef struct{
     uint8_t *BHR;
 }BTB_t;
 
-BTB_t *btb = NULL;
+static BTB_t *btb;
 
 /********************************  functions  ***********************************/
 uint32_t Mask_Calc(uint32_t x){
@@ -210,14 +210,17 @@ uint8_t SharedType_Hist(uint32_t pc, uint32_t indx){
 
 int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned fsmState,
 			bool isGlobalHist, bool isGlobalTable, int Shared){
-	btb = (BTB_t*)malloc(sizeof(BTB_t));
+	//printf("BP_init \n");
+    btb = (BTB_t*)malloc(sizeof(BTB_t));
     if(btb == NULL){
         return -1;
     } 
     int init_success = 0;
     init_success += BTB_Init(btb, btbSize, historySize, tagSize, fsmState, isGlobalHist, isGlobalTable, Shared);
     init_success += Table_Init(pow(2, historySize));
-    init_success += Hist_Init((int)btbSize);
+    //init_success += Hist_Init((int)btbSize);
+
+    init_success += Hist_Init(btbSize);
 
     for(int i=0; i<btbSize; i++){
         btb->btb_entry[i].valid = false;
@@ -363,23 +366,27 @@ void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst){
 }
 */
 
+
 void BP_GetStats(SIM_stats *curStats){
     *curStats = btb->sim_stats;
-    if(!(btb->isGlobalTable)){
-        for(int i=0; i<btb->BTB_size; i++){
+    
+    //free(btb->btb_entry);
+
+    /*if(!(btb->isGlobalTable)){
+        for(int i=0; i<(btb->BTB_size); i++){
             free(btb->FSM_local[i]);
         }
         free(btb->FSM_local);
     }
     else{
         free(btb->FSM_global);
-    }
-    free(btb->btb_entry);
+    }*/
 
     if(!(btb->isGlobalHist)){
         free(btb->BHR);
     }
     free(btb);
+    
 	return;
 }
 
