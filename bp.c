@@ -331,66 +331,6 @@ void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst){
     Hist_Update(indx, taken);
     Table_Update(taken, indx, curr_hist, tag, targetPc);
 }
-/*
-void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst){
-	btb->sim_stats.br_num++;
-    uint32_t indx = ((pc >> 2) & Mask_Calc(log2(btb->BTB_size)));
-    uint32_t tag = ((pc >> 2) >> (uint32_t)log2(btb->BTB_size)) & Mask_Calc(btb->BTB_size);
-    uint8_t curr_hist = SharedType_Hist(pc, indx);
-
-    bool btbValid = btb->btb_entry[indx].valid;
-    uint32_t btbTag = btb->btb_entry[indx].tag;
-    
-    Table_Update(taken, indx, curr_hist, tag, targetPc);
-
-    if(btbValid && (btbTag == tag)){
-        Table_Update(taken, indx, curr_hist, tag, targetPc);
-        Hist_Update(indx, taken);
-    }
-    else{
-        btb->btb_entry[indx].valid = true;
-        btb->btb_entry[indx].target = targetPc;
-        btb->btb_entry[indx].tag = tag;
-        //uint8_t cur_hist = btb->GHR;
-
-        if(taken){
-            btb->sim_stats.flush_num++;
-        }
-
-
-        if (btb->isGlobalHist){
-            btb->GHR = ((((btb->GHR) << 1) + taken) & Mask_Calc(btb->hist_size));
-        }
-        else{
-            ///cur_hist = 0;
-            btb->BHR[indx] = taken;
-        } 
-
-        uint32_t xor_calc = 0;
-        uint8_t hist = (btb->isGlobalHist)? (btb->GHR) : (0);
-        if(btb->sharedType == USING_SHARE_LSB){
-            xor_calc = (pc >> 2) & Mask_Calc(btb->hist_size);
-        }
-        if(btb->sharedType == USING_SHARE_MID){
-            xor_calc = (pc >> 16) & Mask_Calc(btb->hist_size);
-        }
-        hist = hist ^ xor_calc;
-        if (btb->isGlobalTable)
-	    {
-		    btb->FSM_global[hist] = FSM_Update(btb->FSM_global[hist], taken);
-	    }
-        else{
-            int size = pow(2, btb->hist_size);
-            for(int i=0; i<size; i++){
-                btb->FSM_local[indx][i] = btb->init_state;
-            }
-            btb->FSM_local[indx][hist] = FSM_Update(btb->FSM_local[indx][hist], taken);
-        }     
-    }
-	return;
-}
-*/
-
 
 void BP_GetStats(SIM_stats *curStats){
     *curStats = btb->sim_stats;
