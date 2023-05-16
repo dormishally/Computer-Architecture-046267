@@ -394,8 +394,6 @@ void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst){
 
 void BP_GetStats(SIM_stats *curStats){
     *curStats = btb->sim_stats;
-    
-    free(btb->btb_entry);
 
     if(!(btb->isGlobalHist)){
         free(btb->BHR);
