@@ -89,10 +89,12 @@ int BTB_Init(BTB_t *btb, unsigned btbSize, unsigned historySize, unsigned tagSiz
     btb->sim_stats.flush_num = 0;
     btb->sim_stats.br_num = 0;
     btb->sim_stats.size = Sim_Stats_Size(btbSize, historySize, tagSize, isGlobalHist, isGlobalTable);
-    btb->btb_entry = (BTB_entry*)malloc(sizeof(BTB_entry));
-    printf("malloced BTB entry\n");
+    btb->btb_entry = (BTB_entry*)malloc(btbSize * sizeof(BTB_entry));
     if(btb->btb_entry == NULL){
         return -1;
+    }
+    else{
+        //printf("malloced btb entry\n");
     }
     return 0;
 }
@@ -100,9 +102,11 @@ int BTB_Init(BTB_t *btb, unsigned btbSize, unsigned historySize, unsigned tagSiz
 int Table_Init(double table_size){
     if(btb->isGlobalTable){
         btb->FSM_global = (FSM_STATE*)malloc(table_size*sizeof(FSM_STATE));
-        //printf("malloced FSM global\n");
         if(btb->FSM_global == NULL){
             return -1;
+        }
+        else{
+            //printf("malloced FSM global\n");
         }
         for(int i=0; i<table_size; i++){
             btb->FSM_global[i] = btb->init_state;
@@ -110,16 +114,21 @@ int Table_Init(double table_size){
     }
     else{
         btb->FSM_local = (FSM_STATE**)malloc(table_size*sizeof(FSM_STATE*));
-        printf("malloced FSM local\n");
         if(btb->FSM_local == NULL){
             return -1;
         }
+        else{
+            //printf("malloced FSM local\n");
+        };
         for(int i=0; i<table_size; i++){
+
             btb->FSM_local[i] = (FSM_STATE*)malloc(table_size*sizeof(FSM_STATE));
-            printf("malloced FSM local\n");
             if(btb->FSM_local[i] == NULL){
             return -1;
-        }
+            }
+            else{
+                //printf("malloced FSM local i\n");
+            };
         }
         for(int i=0; i<table_size; i++){
             for(int j=0; j<table_size; j++){
@@ -127,18 +136,21 @@ int Table_Init(double table_size){
             }
         }
     }
+
     return 0;
 }
 
-int Hist_Init(int size){
+int Hist_Init(unsigned size){
     if(btb->isGlobalHist){
         btb->GHR = 0;
     }
     else{
         btb->BHR = (uint8_t*)malloc((size)*sizeof(uint8_t));
-        //printf("malloced BHR\n");
         if(btb->BHR == NULL){
             return -1;
+        }
+        else{
+            //printf("malloced BHR\n");
         }
         for(int i=0; i<size; i++){
             btb->BHR[i] = 0;
@@ -219,18 +231,26 @@ int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned f
     btb = (BTB_t*)malloc(sizeof(BTB_t));
     if(btb == NULL){
         return -1;
-    } 
+    }
+    else{
+        //printf("malloced btb\n");
+    }
     int init_success = 0;
     init_success += BTB_Init(btb, btbSize, historySize, tagSize, fsmState, isGlobalHist, isGlobalTable, Shared);
     init_success += Table_Init(pow(2, historySize));
+
     //init_success += Hist_Init((int)btbSize);
 
     init_success += Hist_Init(btbSize);
-
-    for(int i=0; i<btbSize; i++){
+    int i = btbSize;
+    while (i<btbSize){
         btb->btb_entry[i].valid = false;
+        i--;
     }
- 
+    //for(int i=0; i<btbSize; i++){
+        //   btb->btb_entry[i].valid = false;
+    //}
+    //}
     return init_success;
 }
 
@@ -382,11 +402,11 @@ void BP_GetStats(SIM_stats *curStats){
 
     if(!(btb->isGlobalTable)){
         for(int i=0; i<(btb->BTB_size); i++){
-            //free(btb->FSM_local[i]);
-            printf("freeing FSM local\n");
+            free(btb->FSM_local[i]);
+            //printf("freeing FSM local\n");
         }
-        //free(btb->FSM_local);
-        printf("freeing FSM local\n");
+        free(btb->FSM_local);
+        //printf("freeing FSM local\n");
     }
     else{
         //printf("freeing FSM global\n");
@@ -398,7 +418,7 @@ void BP_GetStats(SIM_stats *curStats){
 
 
 
-
+    //printf("freeing BTB\n");
     free(btb);
     
 	return;
