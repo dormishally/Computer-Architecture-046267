@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+
 #include "cache.c"
 
 using std::FILE;
@@ -62,9 +63,8 @@ int main(int argc, char **argv) {
 			return 0;
 		}
 	}
-
-    //cacheTable* L1=cache_init(L1Size,BSize,L1Assoc,L1Cyc,WrAlloc);
-    //cacheTable* L2=cache_init(L2Size,BSize,L2Assoc,L2Cyc,WrAlloc);
+	cache_board* L1=cache_init(L1Size,WrAlloc,BSize,L1Cyc,L1Assoc);
+    cache_board* L2=cache_init(L2Size,WrAlloc,BSize,L2Cyc,L2Assoc);
 
 	while (getline(file, line)) {
 
@@ -76,35 +76,18 @@ int main(int argc, char **argv) {
 			//cout << "Command Format error" << endl;
 			return 0;
 		}
-
-		// DEBUG - remove this line
-		cout << "operation: " << operation;
-
 		string cutAddress = address.substr(2); // Removing the "0x" part of the address
-
-		// DEBUG - remove this line
-		cout << ", address (hex)" << cutAddress;
-
 		unsigned long int num = 0;
 		num = strtoul(cutAddress.c_str(), NULL, 16);
-
-		// DEBUG - remove this line
-		cout << " (dec) " << num << endl;
-
-        //Cache_Update(operation,L1,L2,num,MemCyc);
-
+		Cache_Update(operation,L1,L2,num,MemCyc);
 	}
 
-	double L1MissRate;
-	double L2MissRate;
-	double avgAccTime;
 
-	printf("L1miss=%.03f ", L1MissRate);
-	printf("L2miss=%.03f ", L2MissRate);
-	printf("AccTimeAvg=%.03f\n", avgAccTime);
-
-    //free_all(L1);
-    //free_all(L2);
-
+	printf("L1miss=%.03f ", cal_miss_rate(L1));
+	printf("L2miss=%.03f ", cal_miss_rate(L2));
+	printf("AccTimeAvg=%.03f\n", cal_avg_time(L1));
+	
+	free_all(L1);
+	free_all(L2);
 	return 0;
 }

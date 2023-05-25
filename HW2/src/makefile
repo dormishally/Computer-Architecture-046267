@@ -1,5 +1,4 @@
 # 046267 Computer Architecture - Winter 20/21 - HW #2
-
 CXX = g++
 CC = gcc
 CFLAGS = -Wall -c -g -fpic 
