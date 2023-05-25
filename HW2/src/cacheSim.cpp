@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include "cache.c"
 
 using std::FILE;
 using std::string;
@@ -62,6 +63,9 @@ int main(int argc, char **argv) {
 		}
 	}
 
+    //cacheTable* L1=cache_init(L1Size,BSize,L1Assoc,L1Cyc,WrAlloc);
+    //cacheTable* L2=cache_init(L2Size,BSize,L2Assoc,L2Cyc,WrAlloc);
+
 	while (getline(file, line)) {
 
 		stringstream ss(line);
@@ -69,7 +73,7 @@ int main(int argc, char **argv) {
 		char operation = 0; // read (R) or write (W)
 		if (!(ss >> operation >> address)) {
 			// Operation appears in an Invalid format
-			cout << "Command Format error" << endl;
+			//cout << "Command Format error" << endl;
 			return 0;
 		}
 
@@ -87,6 +91,8 @@ int main(int argc, char **argv) {
 		// DEBUG - remove this line
 		cout << " (dec) " << num << endl;
 
+        //Cache_Update(operation,L1,L2,num,MemCyc);
+
 	}
 
 	double L1MissRate;
@@ -96,6 +102,9 @@ int main(int argc, char **argv) {
 	printf("L1miss=%.03f ", L1MissRate);
 	printf("L2miss=%.03f ", L2MissRate);
 	printf("AccTimeAvg=%.03f\n", avgAccTime);
+
+    //free_all(L1);
+    //free_all(L2);
 
 	return 0;
 }
