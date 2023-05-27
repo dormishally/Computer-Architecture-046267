@@ -63,8 +63,8 @@ int main(int argc, char **argv) {
 			return 0;
 		}
 	}
-	cacheTable* L1=cache_init(L1Size,BSize,L1Assoc,L1Cyc,WrAlloc);
-    cacheTable* L2=cache_init(L2Size,BSize,L2Assoc,L2Cyc,WrAlloc);
+	cache_board* L1=cache_init(L1Size,BSize,L1Assoc,L1Cyc,WrAlloc);
+    cache_board* L2=cache_init(L2Size,BSize,L2Assoc,L2Cyc,WrAlloc);
 
 	while (getline(file, line)) {
 
