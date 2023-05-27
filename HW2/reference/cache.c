@@ -11,7 +11,7 @@ static double access_overall_time=0;
 typedef struct
 {
     uint32_t previous_add;
-    uint32_t count_LRU;
+    uint32_t LRU_id;
     uint32_t ref;
     uint32_t cache_tag;
     bool legal;
@@ -51,81 +51,82 @@ cache_board* cache_init(uint32_t LSize, bool write_allocation, uint32_t BSize, u
         board->row[i] = (cache_rows *)malloc(sizeof(cache_rows));
         board->row[i]->previous_add = 0;
         board->row[i]->dirtybit = false;
-        board->row[i]->count_LRU = 0;
+        board->row[i]->LRU_id = 0;
         board->row[i]->legal = false;
         i++;
     }
     return board;
 }
+//find line that match tag and ref and legal. if successful retrun the current board(assoc);
+int match_line_to_tag(uint32_t tag, cache_board* C,uint32_t ref)
+{
+   //for each board and current legal in board we compare the current tag
+   for (uint32_t current_assoc = 0; current_assoc < C->assoc; current_assoc++)
+   {
+       cache_rows* current_line = C->row[ref*(C->assoc)+current_assoc];
+       if(current_line->legal)
+       {
+           if(current_line->cache_tag == tag)
+           {
+               return current_assoc;
+           }
+       }
+       else{
+           return EMPTY_LINE;
+       }
+   }
+   return EMPTY_LINE;
+}
+
+//try to find the last used LRU that match to current ref. if found ref == 0 return the line.
+static cache_rows* get_previous_LRU(uint32_t ref, cache_board* C)
+{
+    uint32_t current_assoc = 0;
+    cache_rows* last_current_line = C->row[ref*(C->assoc)+ current_assoc];
+    uint32_t  minimum_LRU;
+    cache_rows* last_line;
+    uint32_t min_LRU_number_1 = last_current_line->LRU_id;
+
+    for(uint32_t current_assoc = 0;current_assoc < C->assoc;current_assoc++)
+    {
+        last_current_line = C->row[ref*(C->assoc) + current_assoc];
+        minimum_LRU = last_current_line->LRU_id;
+        if(minimum_LRU != 0)
+        {
+            if (minimum_LRU < min_LRU_number_1)
+            {
+                min_LRU_number_1 = minimum_LRU;
+                last_line = last_current_line;
+            }
+        }
+        else{
+            return last_current_line;
+        }
+    }
+    return last_line;
+}
+
+//updating LRU id in blocks
+void LRU_update(uint32_t ref, uint32_t tag,cache_board* C)
+{
+    int relevant_ref = ref*(C->assoc);
+    uint32_t accessed_index_in_ref = match_line_to_tag(tag,C,ref);
+    int relevant_id_in_ref = relevant_ref + accessed_index_in_ref;
+    uint32_t previous_accessed = (C->row[relevant_id_in_ref])->LRU_id;
+    (C->row[relevant_id_in_ref])->LRU_id = C->assoc-1;
+    for(uint32_t wanted_ref = 0;wanted_ref < C->assoc;wanted_ref++)
+    {
+        cache_rows* relevant_entrance = C->row[relevant_ref+wanted_ref];
+        if((wanted_ref!=accessed_index_in_ref)&&(relevant_entrance->LRU_id > previous_accessed)&&(relevant_entrance->legal))
+        {
+            relevant_entrance->LRU_id--;
+        }
+        wanted_ref++;
+    }
+}
+
 /*
 
-//try to find line that match tag and set and valid. if successful retrun the cur tabel(assoc);
-int find_match_tag(cache_board* L,uint32_t tag,uint32_t set)
-{
-    uint32_t cur_assoc = 0;
-    //for eatch tables and cur set in table we comper the cur tag
-    while (cur_assoc < L->assoc)
-    {
-        cache_rows* cur_line = L->row[set*L->assoc+cur_assoc];
-        if(cur_line->valid != true)
-        {
-            return NO_LINE;
-        }
-        if (cur_line->tag == tag )
-        {
-            return cur_assoc;
-        }
-        cur_assoc++;        
-    }
-    return NO_LINE;
-}
-//try to find the last used LRU that match to cur set. if found set == 0 return the line.
-static cache_rows* get_last_used_LRU(cache_board* L,uint32_t set)
-{
-    uint32_t cur_assoc = 0;
-    uint32_t min_LRU;
-    cache_rows* oldest_cur_line = L->row[set*L->assoc+cur_assoc];
-    cache_rows* oldest_line;
-    uint32_t first_min_LRU = oldest_cur_line->LRU_num;
-
-    while (cur_assoc < L->assoc)
-    {
-        oldest_cur_line = L->row[set*L->assoc+cur_assoc];
-        min_LRU = oldest_cur_line ->LRU_num;
-        
-        if (min_LRU == 0)
-        {
-            return oldest_cur_line;
-        }
-        if (min_LRU < first_min_LRU)
-        {
-            first_min_LRU = min_LRU;
-            oldest_line = oldest_cur_line;
-        }
-        
-        cur_assoc++;
-    }
-    return oldest_line;
-}
-//updating LRU num in blocks
-void LRU_handel(cache_board* L,uint32_t set,uint32_t tag)
-{
-    uint32_t accessed_index_in_set = find_match_tag(L,tag,set);
-    uint32_t wantedSet = 0;
-    int relevantSet = set*L->assoc;
-    int relevantIndexInSet = relevantSet + accessed_index_in_set;
-    uint32_t prevAccess = (L->row[relevantIndexInSet])->LRU_num;
-    (L->row[relevantIndexInSet])->LRU_num = L->assoc-1;
-    while(wantedSet < L->assoc)
-    {
-        cache_rows* relevantEntry = L->row[relevantSet+wantedSet];
-        if ((wantedSet!=accessed_index_in_set)&&(relevantEntry->LRU_num>prevAccess)&&(relevantEntry->valid))
-        {
-            relevantEntry->LRU_num--;
-        }
-        wantedSet++;
-    }
-}
 //calculat the set according to the current address
 static uint32_t cal_set(cache_board* L,uint32_t address)
 {
@@ -145,11 +146,11 @@ cache_rows* get_to_cache_updating_LRU(cache_board *L,uint32_t address)
 {
     uint32_t set = cal_set(L,address);
     uint32_t tag = cal_tag(L,address);
-    int32_t cur_assoc = find_match_tag(L,tag,set);
+    int32_t cur_assoc = match_line_to_tag(L,tag,set);
 
     if (cur_assoc!=NO_LINE)
     {
-        LRU_handel(L,set,tag);
+        LRU_update(set,tag,L);
         return L->row[set*L->assoc+cur_assoc];
     }
     return NULL;
@@ -159,7 +160,7 @@ cache_rows* get_to_cache(cache_board *L,uint32_t address)
 {
     uint32_t set = cal_set(L,address);
     uint32_t tag = cal_tag(L,address);
-    int32_t cur_assoc = find_match_tag(L,tag,set);
+    int32_t cur_assoc = match_line_to_tag(L,tag,set);
 
     if (cur_assoc!=NO_LINE)
     {
@@ -201,13 +202,13 @@ cache_rows* insert_new_block(cache_board* L, uint32_t address,uint32_t * flip_ad
     //everyting valid- go to the oldest used block 
     if (no_invalid)
     {
-        new_block = get_last_used_LRU(L,set);
+        new_block = get_previous_LRU(L,set);
         *flip_address = new_block->original_address;
         *flip=true;
     }
     //take the new block make valid, and updating
     update_new_block(new_block,address,tag,set);
-    LRU_handel(L,set,tag);
+    LRU_update(set,tag,L);
     return new_block;
 }
 //hendel case of read : if secssed to read return true (hit) else return false(miss)
