@@ -6,6 +6,8 @@
 
 #define NO_LINE -1
 
+static int print_num;
+
 typedef struct 
 {
     uint32_t tag;
@@ -34,6 +36,8 @@ static double access_total_time=0;
 cacheTable* cache_init(uint32_t LSize, uint32_t BSize, uint32_t LAssoc, uint32_t LCyc,bool WrAlloc)
 {
     cacheTable* table = (cacheTable*)malloc(sizeof(cacheTable));
+    printf("%d. im here and the first Bsize is %d\n",print_num, BSize);
+    print_num++;
     table->original_blockSize = BSize;
     table->cyc = LCyc;
     table->assoc = (uint32_t)pow(2,LAssoc);
@@ -60,6 +64,8 @@ cacheTable* cache_init(uint32_t LSize, uint32_t BSize, uint32_t LAssoc, uint32_t
 int find_match_tag(cacheTable* L,uint32_t tag,uint32_t set)
 {
     uint32_t cur_assoc = 0;
+    printf("the tag in match is %d\n",tag);
+    printf("the ref in match is %d\n",set);
     //for eatch tables and cur set in table we comper the cur tag
     while (cur_assoc < L->assoc)
     {
@@ -81,9 +87,11 @@ static cacheLines* get_last_used_LRU(cacheTable* L,uint32_t set)
 {
     uint32_t cur_assoc = 0;
     uint32_t min_LRU;
+    printf("im here and the ref is %d\n",set);
     cacheLines* oldest_cur_line = L->line[set*L->assoc+cur_assoc];
     cacheLines* oldest_line;
     uint32_t first_min_LRU = oldest_cur_line->LRU_num;
+    printf("im here and the first min LRU id %d\n",first_min_LRU);
 
     while (cur_assoc < L->assoc)
     {
@@ -92,6 +100,7 @@ static cacheLines* get_last_used_LRU(cacheTable* L,uint32_t set)
         
         if (min_LRU == 0)
         {
+	    printf("im here and min LRU IS 0\n");
             return oldest_cur_line;
         }
         if (min_LRU < first_min_LRU)
@@ -99,7 +108,7 @@ static cacheLines* get_last_used_LRU(cacheTable* L,uint32_t set)
             first_min_LRU = min_LRU;
             oldest_line = oldest_cur_line;
         }
-        
+        printf("im here and min LRU IS NOT 0\n");
         cur_assoc++;
     }
     return oldest_line;
@@ -107,11 +116,15 @@ static cacheLines* get_last_used_LRU(cacheTable* L,uint32_t set)
 //updating LRU num in blocks
 void LRU_handel(cacheTable* L,uint32_t set,uint32_t tag)
 {
+    printf("im here AND the reciecved ref is %d\n",set);
     uint32_t accessed_index_in_set = find_match_tag(L,tag,set);
     uint32_t wantedSet = 0;
     int relevantSet = set*L->assoc;
+    printf("im here AND the relevant ref is %d\n",relevantSet);
+    printf("im here AND the accesesed ref is %d\n",accessed_index_in_set);
     int relevantIndexInSet = relevantSet + accessed_index_in_set;
     uint32_t prevAccess = (L->line[relevantIndexInSet])->LRU_num;
+    printf("im here AND the relevant id is %d\n",relevantIndexInSet);
     (L->line[relevantIndexInSet])->LRU_num = L->assoc-1;
     while(wantedSet < L->assoc)
     {
@@ -140,12 +153,19 @@ static uint32_t cal_tag(cacheTable* L,uint32_t address)
 //find match valid line to set and tag and update LRU
 cacheLines* get_to_cache_updating_LRU(cacheTable *L,uint32_t address)
 {
+    printf("%d. im here and the adress is %d\n",print_num,address);
+    print_num++;
+    printf("%d. im here and pre block size is %d\n",print_num, L->original_blockSize);
+    print_num++;    
     uint32_t set = cal_set(L,address);
     uint32_t tag = cal_tag(L,address);
     int32_t cur_assoc = find_match_tag(L,tag,set);
-
+    printf("%d. im here AND the current assoc is %d\n",print_num,cur_assoc);
+    print_num++;
     if (cur_assoc!=NO_LINE)
     {
+	printf("%d. im here AND im calling LRU from cache func\n" ,print_num);
+	print_num++;
         LRU_handel(L,set,tag);
         return L->line[set*L->assoc+cur_assoc];
     }
@@ -204,6 +224,7 @@ cacheLines* insert_new_block(cacheTable* L, uint32_t address,uint32_t * flip_add
     }
     //take the new block make valid, and updating
     update_new_block(new_block,address,tag,set);
+    printf("im here AND im calling LRU from insert new block func\n");
     LRU_handel(L,set,tag);
     return new_block;
 }

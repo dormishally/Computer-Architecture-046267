@@ -7,6 +7,7 @@
 #define EMPTY_LINE -1
 
 static double access_overall_time=0;
+static int print_num;
 
 typedef struct
 {
@@ -35,6 +36,8 @@ cache_board* cache_init(uint32_t LSize, bool write_allocation, uint32_t BSize, u
 {
     cache_board* board = (cache_board*)malloc(sizeof(cache_board));
     board->cycle = LCyc;
+    printf("%d. im here and the first Bsize is %d\n",print_num, BSize);
+    print_num++;
     board->previous_blockExtent = BSize;
     board->blockExtent = (uint32_t)pow(2,BSize);
     board->assoc = (uint32_t)pow(2,LAssoc);
@@ -51,6 +54,7 @@ cache_board* cache_init(uint32_t LSize, bool write_allocation, uint32_t BSize, u
         board->row[i] = (cache_rows *)malloc(sizeof(cache_rows));
         board->row[i]->previous_add = 0;
         board->row[i]->dirtybit = false;
+        //printf("im here in the init func\n");
         board->row[i]->LRU_id = 0;
         board->row[i]->legal = false;
         i++;
@@ -60,10 +64,12 @@ cache_board* cache_init(uint32_t LSize, bool write_allocation, uint32_t BSize, u
 //find line that match tag and ref and legal. if successful retrun the current board(assoc);
 int match_line_to_tag(uint32_t tag, cache_board* C,uint32_t ref)
 {
+    printf("the tag in match is %d\n",tag);
+    printf("the ref in match is %d\n",ref);
    //for each board and current legal in board we compare the current tag
    for (uint32_t current_assoc = 0; current_assoc < C->assoc; current_assoc++)
    {
-       cache_rows* current_line = C->row[ref*(C->assoc)+current_assoc];
+       cache_rows* current_line = C->row[ref*C->assoc+current_assoc];
        if(current_line->legal)
        {
            if(current_line->cache_tag == tag)
@@ -82,24 +88,33 @@ int match_line_to_tag(uint32_t tag, cache_board* C,uint32_t ref)
 static cache_rows* get_previous_LRU(uint32_t ref, cache_board* C)
 {
     uint32_t current_assoc = 0;
-    cache_rows* last_current_line = C->row[ref*(C->assoc)+ current_assoc];
+    printf("im here and the ref is %d\n",ref);
+    cache_rows* last_current_line = C->row[ref*C->assoc+ current_assoc];
+    //printf("im here\n the last address is %d",last_current_line->previous_add);
     uint32_t  minimum_LRU;
     cache_rows* last_line;
     uint32_t min_LRU_number_1 = last_current_line->LRU_id;
+    printf("im here and the first min LRU id %d\n",min_LRU_number_1);
 
     for(uint32_t current_assoc = 0;current_assoc < C->assoc;current_assoc++)
     {
-        last_current_line = C->row[ref*(C->assoc) + current_assoc];
+        last_current_line = C->row[ref*C->assoc + current_assoc];
         minimum_LRU = last_current_line->LRU_id;
         if(minimum_LRU != 0)
         {
+            printf("im here AND THE MIN LRU IS NOT 0\n");
+            printf("im here and the first min LRU id %d",min_LRU_number_1);
+            //printf("im here and the min LRU is %d\n",minimum_LRU);
             if (minimum_LRU < min_LRU_number_1)
             {
                 min_LRU_number_1 = minimum_LRU;
                 last_line = last_current_line;
+                //printf("im here\n");
+                printf("im here\n the min LRU is %d",minimum_LRU);
             }
         }
         else{
+            printf("im here AND THE MIN LRU IS 0\n");
             return last_current_line;
         }
     }
@@ -109,9 +124,14 @@ static cache_rows* get_previous_LRU(uint32_t ref, cache_board* C)
 //updating LRU id in blocks
 void LRU_update(uint32_t ref, uint32_t tag,cache_board* C)
 {
-    int relevant_ref = ref*(C->assoc);
+    //printf("im here in the LRU func\n");
+    int relevant_ref = ref*C->assoc;
+    printf("im here AND the reciecved ref is %d\n",ref);
     uint32_t accessed_index_in_ref = match_line_to_tag(tag,C,ref);
+    printf("im here AND the relevant ref is %d\n",relevant_ref);
+    printf("im here AND the accesesed ref is %d\n",accessed_index_in_ref);
     int relevant_id_in_ref = relevant_ref + accessed_index_in_ref;
+    printf("im here AND the relevant id is %d\n",relevant_id_in_ref);
     uint32_t previous_accessed = (C->row[relevant_id_in_ref])->LRU_id;
     (C->row[relevant_id_in_ref])->LRU_id = C->assoc-1;
     for(uint32_t wanted_ref = 0;wanted_ref < C->assoc;wanted_ref++)
@@ -127,14 +147,23 @@ void LRU_update(uint32_t ref, uint32_t tag,cache_board* C)
 
 // find match valid line to set and tag and update LRU
 cache_rows* get_to_cache_updating_LRU(cache_board* C, uint32_t address){
+    printf("%d. im here and the adress is %d\n",print_num,address);
+    print_num++;
+    printf("%d. im here and pre block size is %d\n",print_num, C->previous_blockExtent);
+    print_num++;
     uint32_t offset = address / (pow(2, C->previous_blockExtent));
     uint32_t set = ((C->bit_extent_ref)-1) & offset;
     uint32_t tag = address >> (C->previous_blockExtent);
     tag = tag >> ((uint32_t)(log(C->bit_extent_ref) / log(2)));
-    uint32_t  current_assoc = match_line_to_tag(tag, C,set);
+    int32_t  current_assoc = match_line_to_tag(tag, C,set);
+    printf("%d. im here AND the current assoc is %d\n",print_num,current_assoc);
+    print_num++;
     if (current_assoc != EMPTY_LINE)
     {
+        printf("%d. im here AND im calling LRU from cache func\n" ,print_num);
+        print_num++;
         LRU_update(set, tag,C);
+        //printf("im here now\n");
         return C->row[set*C->assoc + current_assoc];
     }
 
@@ -168,15 +197,19 @@ void update_new_block (cache_rows* new_line,uint32_t address,uint32_t tag,uint32
 
 cache_rows* insert_new_block(cache_board* L, uint32_t address,uint32_t * flip_address,bool* flip,uint32_t ref,uint32_t tag){
     bool no_legal = false;
+    printf("im here now\n");
     cache_rows* new_block = find_first_invalid(L,ref,&no_legal);
     if (no_legal)
     {
         new_block = get_previous_LRU(ref,L);
+        //printf("the prvious address is %d", new_block->previous_add);
         *flip_address = new_block->previous_add;
         *flip=true;
     }
     update_new_block(new_block, address, tag, ref);
+    printf("im here AND im calling LRU from insert new block func\n");
     LRU_update(ref,tag,L);
+    printf("im here now\n");
     return new_block;
 }
 
@@ -201,6 +234,7 @@ bool Read_Write_Op(char operation, cache_board* L, uint32_t address, uint32_t * 
         }
         insert_new_block(L,address,flip_add,flip,ref,tag);
         L->misses_count ++;
+        printf("im here now\n");
     }
     else if(operation == 'w'){
         if(current_line){
