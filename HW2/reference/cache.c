@@ -125,209 +125,133 @@ void LRU_update(uint32_t ref, uint32_t tag,cache_board* C)
     }
 }
 
-/*
-
-//calculat the set according to the current address
-static uint32_t cal_set(cache_board* L,uint32_t address)
-{
-    int toSet = pow(2,L->original_blockExtent);
-    uint32_t offsetCut = address / toSet;
-    uint32_t setFieldSize = L->set_bitSize-1;
-    return offsetCut & setFieldSize;
-}
-//calculat the tag accoeding to the current address
-static uint32_t cal_tag(cache_board* L,uint32_t address)
-{
-    uint32_t original_set = (uint32_t)log2(L->set_bitSize);
-    return address>>((L->original_blockExtent)+original_set);
-}
-//find match valid line to set and tag and update LRU
-cache_rows* get_to_cache_updating_LRU(cache_board *L,uint32_t address)
-{
-    uint32_t set = cal_set(L,address);
-    uint32_t tag = cal_tag(L,address);
-    int32_t cur_assoc = match_line_to_tag(L,tag,set);
-
-    if (cur_assoc!=NO_LINE)
+// find match valid line to set and tag and update LRU
+cache_rows* get_to_cache_updating_LRU(cache_board* C, uint32_t address){
+    uint32_t offset = address / (pow(2, C->previous_blockExtent));
+    uint32_t set = ((C->bit_extent_ref)-1) & offset;
+    uint32_t tag = address >> (C->previous_blockExtent);
+    tag = tag >> ((uint32_t)(log(C->bit_extent_ref) / log(2)));
+    uint32_t  current_assoc = match_line_to_tag(tag, C,set);
+    if (current_assoc != EMPTY_LINE)
     {
-        LRU_update(set,tag,L);
-        return L->row[set*L->assoc+cur_assoc];
+        LRU_update(set, tag,C);
+        return C->row[set*C->assoc + current_assoc];
     }
-    return NULL;
-}
-//find match valid line to set and tag if no match line return NULL
-cache_rows* get_to_cache(cache_board *L,uint32_t address)
-{
-    uint32_t set = cal_set(L,address);
-    uint32_t tag = cal_tag(L,address);
-    int32_t cur_assoc = match_line_to_tag(L,tag,set);
 
-    if (cur_assoc!=NO_LINE)
-    {
-        return L->row[set*L->assoc+cur_assoc];
-    }
     return NULL;
+
 }
-//just updating new block
-void update_new_block (cache_rows* new_line,uint32_t address,uint32_t tag,uint32_t set)
+
+static cache_rows* find_first_invalid(cache_board* C,uint32_t set,bool* no_invalid)
 {
-    new_line->tag = tag;
-    new_line->set = set;
-    new_line->valid = true;
-    new_line->original_address = address;
-    return;
-}
-//try to find the first invalid line that match to cur set. if successful return the cur line
-static cache_rows* find_first_invalid(cache_board* L,uint32_t set,bool* no_invalid)
-{
-    uint32_t cur_assoc = 0;
-    //for eatch tables and cur set in table we take the first invalid
-    while (cur_assoc < L->assoc)
+    for (uint32_t cur_assoc = 0; cur_assoc < C->assoc;cur_assoc++)
     {
-        cache_rows* cur_line = L->line[set*L->assoc+cur_assoc];
-        if(cur_line->valid == false)
+        cache_rows* current_row = C->row[set*C->assoc+cur_assoc];
+        if (current_row->legal == false)
         {
-            return cur_line;
+            return current_row;
         }
-        cur_assoc++; 
     }
     *no_invalid = true;
     return NULL;
 }
-//insert new block in the cache: first- try to find invalid and make it valid (match to set) if everything valid- go to the last LRU
-cache_rows* insert_new_block(cache_board* L, uint32_t address,uint32_t * flip_address,bool* flip,uint32_t set,uint32_t tag)
+
+//just updating new block
+void update_new_block (cache_rows* new_line,uint32_t address,uint32_t tag,uint32_t set)
 {
-    bool no_invalid = false;
-    cache_rows* new_block = find_first_invalid(L,set,&no_invalid);
-    //everyting valid- go to the oldest used block 
-    if (no_invalid)
+    new_line->cache_tag = tag;
+    new_line->ref = set;
+    new_line->legal = true;
+    new_line->previous_add = address;
+    return;
+}
+
+cache_rows* insert_new_block(cache_board* L, uint32_t address,uint32_t * flip_address,bool* flip,uint32_t ref,uint32_t tag){
+    bool no_legal = false;
+    cache_rows* new_block = find_first_invalid(L,ref,&no_legal);
+    if (no_legal)
     {
-        new_block = get_previous_LRU(L,set);
-        *flip_address = new_block->original_address;
+        new_block = get_previous_LRU(ref,L);
+        *flip_address = new_block->previous_add;
         *flip=true;
     }
-    //take the new block make valid, and updating
-    update_new_block(new_block,address,tag,set);
-    LRU_update(set,tag,L);
+    update_new_block(new_block, address, tag, ref);
+    LRU_update(ref,tag,L);
     return new_block;
 }
-//hendel case of read : if secssed to read return true (hit) else return false(miss)
-bool read_from_cache(cache_board* L,uint32_t address,uint32_t * flip_address,bool* flip)
-{
-    uint32_t set = cal_set(L,address);
-    uint32_t tag = cal_tag(L,address); 
-    L->cache_calls++;
-   //HIT- can read from cache then return true
-   cache_rows* cur_line = get_to_cache_updating_LRU(L,address);
-    if(cur_line!=NULL)
-    {
-        return true;
-    }
-   //MISS- cant read from cache, updating new block 
-    insert_new_block(L,address,flip_address,flip,set,tag);  
-    L->misses_num++;
-    return false;
+
+void Ref_Tag_Calc(cache_board* L, uint32_t address, uint32_t * ref, uint32_t * tag){
+    uint32_t offset = address / (pow(2, L->previous_blockExtent));
+    *ref = ((L->bit_extent_ref)-1) & offset;
+
+    uint32_t tag_tmp = address >> (L->previous_blockExtent);
+    *tag = tag_tmp >> ((uint32_t)(log(L->bit_extent_ref) / log(2)));
 }
-//hendel case of write : if secssed to write return true (hit) else return false(miss)
-bool write_to_cache(cache_board* L,uint32_t address,uint32_t * flip_address,bool* flip)
-{
-    uint32_t set = cal_set(L,address);
-    uint32_t tag = cal_tag(L,address);
-    L->cache_calls++;
-    //HIT- can write to cache then update dirty and return true
-    cache_rows* cur_line = get_to_cache_updating_LRU(L,address);
-    if(cur_line!=NULL)
-    {
-        cur_line->dirtybit=true;
-        return true;
+
+
+bool Read_Write_Op(char operation, cache_board* L, uint32_t address, uint32_t * flip_add, bool* flip){
+    uint32_t ref, tag;
+    Ref_Tag_Calc(L, address, &ref, &tag);
+
+    L->cache_signals ++;
+    cache_rows* current_line = get_to_cache_updating_LRU(L, address);
+    if(operation == 'r'){
+        if(current_line){
+            return true;
+        }
+        insert_new_block(L,address,flip_add,flip,ref,tag);
+        L->misses_count ++;
     }
-    if(cur_line == NULL) //MISS- cant write to cache, hendel case of write and no write allocate
-    {
-        L->misses_num++;
-        if(!L->write_allocate)
-        {
+    else if(operation == 'w'){
+        if(current_line){
+            current_line->dirtybit = true;
+            return true;
+        }
+        L->misses_count ++;
+        if(L->write_assign == false){
             return false;
         }
-        cur_line = insert_new_block(L,address,flip_address,flip,set,tag);
+        current_line =  insert_new_block(L,address,flip_add,flip,ref,tag);
+        current_line->dirtybit = true;
     }
-    cur_line->dirtybit=true;           
     return false;
 }
-// hendel dirty bit flow
-void hendel_dirty(bool flip,bool L1_acsses,bool L2_acsses,cache_board* L1,cache_board* L2,uint32_t flip_address)
-{
-    //hendel dirty after L1 if needed
-    if(L1_acsses == true && L2_acsses == false)
-    {
-        if(flip) 
-            {
-            cache_rows* L2_entry = get_to_cache(L2, flip_address);
-            if(L2_entry->dirtybit)
-            {
-            get_to_cache_updating_LRU(L2, flip_address);
-            }
-        }
-    }
-    //hendel dirty after L2 if needed
-    if(L1_acsses == true && L2_acsses == true)
-    {
-        if(flip) 
-        {
-            cache_rows *L1_entry = get_to_cache(L1, flip_address);
-            if (L1_entry != NULL) {
-            L1_entry->valid = false;
-            }
-        }
-    }
-return;
-}
-// hendel all the access to the cache levels: L1 ---> L2 ---> Memory 
-void Cache_Update(char operation,cache_board* L1,cache_board* L2,uint32_t address,uint32_t Memcycle)
-{
-    uint32_t flip_address = 0;
-    bool flip = false;
-    bool L1_acsses = false;
-    bool L2_acsses = false;
-    //****L1****
-    //go to L1 first, if seccsed to read/write - end
-    access_total_time += L1->cycle;
-    L1_acsses = true;
 
-    if(operation == 'r')
-    {
-        if(read_from_cache(L1,address,&flip_address,&flip))
-        return;
+void Cache_Update(char operation, cache_board* L1, cache_board* L2, uint32_t address, uint32_t MemCyc){
+    bool flip = false;
+    uint32_t flip_add = 0;
+    access_overall_time += (L1->cycle);
+    if(Read_Write_Op(operation, L1, address, &flip_add, &flip) == true) return;
+    else{
+        if(flip){
+            uint32_t L2_ref, L2_tag;
+            Ref_Tag_Calc(L2, address, &L2_ref, &L2_tag);
+            int32_t current_assoc = match_line_to_tag(L2_tag, L2, L2_ref);
+            cache_rows* L2_ent = (current_assoc != EMPTY_LINE)? (L2->row[L2_ref * (L2->assoc) + current_assoc]) : NULL;
+            if(L2_ent && L2_ent->dirtybit){
+                get_to_cache_updating_LRU(L2, flip_add);
+            }
+        }
     }
-    else
-    {
-        if(write_to_cache(L1,address,&flip_address,&flip))
-        return;
-    }  
-    hendel_dirty(flip,L1_acsses,L2_acsses,L1,L2,flip_address);
-    //****L2****
-    //go to L2 if seccsed to read/write - end
-    access_total_time += L2->cycle;
-    L2_acsses = true;
-    flip_address = 0;
+    access_overall_time += (L2->cycle);
     flip = false;
-    if (operation == 'r')
-    {
-        if (read_from_cache(L2,address,&flip_address,&flip))
-        return;
+    flip_add = 0;
+    if(Read_Write_Op(operation, L2, address, &flip_add, &flip) == true) return;
+    else{
+        if(flip){
+            uint32_t L1_ref, L1_tag;
+            Ref_Tag_Calc(L1, address, &L1_ref, &L1_tag);
+            int32_t current_assoc = match_line_to_tag(L1_tag, L1, L1_ref);
+            cache_rows* L1_ent = (current_assoc != EMPTY_LINE)? (L1->row[L1_ref * (L1->assoc) + current_assoc]) : NULL;
+            if(L1_ent != NULL){
+                L1_ent->legal = false;
+            }
+        }
     }
-    else
-    {
-        if(write_to_cache(L2,address,&flip_address,&flip))
-        return;
-    }
-    hendel_dirty(flip,L1_acsses,L2_acsses,L1,L2,flip_address);
-    //****Memory****
-    //go to the memory and this is the end
-    access_total_time += Memcycle;
-    //end
-    return;
-    
+    access_overall_time += MemCyc;
 }
+
+
 void free_all(cache_board *L)
 {
     uint32_t blockExtent = L->blockExtent;
@@ -344,14 +268,12 @@ void free_all(cache_board *L)
 
 double cal_miss_rate(cache_board* L)
 {
-    double misses = (double)(L->misses_num);
-    double num_of_calls = (double)(L->cache_calls);
+    double misses = (double)(L->misses_count);
+    double num_of_calls = (double)(L->cache_signals);
     return (misses / num_of_calls);
 }
 double cal_avg_time(cache_board* L)
 {
-    double num_of_calls = (double)(L->cache_calls);
-    return (access_total_time/num_of_calls);
+    double num_of_calls = (double)(L->cache_signals);
+    return (access_overall_time/num_of_calls);
 }
-
- */
