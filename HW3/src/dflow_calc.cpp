@@ -11,7 +11,16 @@ public:
     InstInfo nodeInfo;
     int32_t weight;
     int32_t opcode;
-    NodeData(InstInfo info, uint32_t weight) : dstIdx(info.dstIdx), nodeInfo(info), weight(weight),opcode(info.opcode) {}
+    
+    NodeData(){}
+    NodeData(InstInfo info, uint32_t weight_b);
+    ~NodeData(){}
+};
+NodeData::NodeData(InstInfo info, uint32_t weight_b){
+        dstIdx = info.dstIdx;
+        nodeInfo = info;
+        weight = weight_b;
+        opcode = info.opcode;
 };
 
 class Node{
@@ -22,8 +31,11 @@ public:
     int32_t numOfInsts;
     std::vector<Node *> childrens; //vector of pinters of Node
     std::vector<Node *> parents;
-    Node(const NodeData node_data, uint32_t index) : node_data(node_data), index(index), maxLen(-1),numOfInsts(0) {}
 
+    Node(){}
+    Node(const NodeData node_data, uint32_t index) : node_data(node_data), index(index), maxLen(-1),numOfInsts(0) {}
+    Node(const NodeData node_data, uint32_t index, int32_t maxLen, int32_t numOfInsts) : node_data(node_data), index(index), maxLen(maxLen),numOfInsts(numOfInsts) {}
+    ~Node(){}
 };
 
 class Graph{
@@ -33,29 +45,23 @@ public:
     Node *src;
     Node *dst;
 
-    Graph() : numOfInsts(0), src(new Node(NodeData(InstInfo(), 0), -1)),dst(new Node(NodeData(InstInfo(), 0), -2)) 
-    {
-        src->maxLen = 0;
-        src->index = 0;
-    }
+    Graph() : numOfInsts(0), src(new Node(NodeData(InstInfo(), 0), -1, 0, 0)),dst(new Node(NodeData(InstInfo(), 0), -2)) {}
+    ~Graph(){}
 };
 
-int node_relation(Node *child, Node *parent)
-{
+int node_relation(Node *child, Node *parent){
     //push back: Add element at the end
     child->parents.push_back(parent);
-    if(parent == NULL)
-    {
+    if(parent == NULL){
         return 0;
     }
-    else
-    {
+    else{
         parent->childrens.push_back(child);
     }
     return 1;
 }
 
-    void handelRelation(Node *cur_node, Node *src1_node, Node *src2_node, Graph *graph, Node *dest_node){
+void handelRelation(Node *cur_node, Node *src1_node, Node *src2_node, Graph *graph, Node *dest_node){
     if ((node_relation(cur_node, src1_node) + node_relation(cur_node, src2_node)) == 0)
     {
         node_relation(cur_node, graph->src);
