@@ -116,13 +116,12 @@ static int Max_Len(Graph *graph, Node *node){
 }
 
 void updating_ins_indx(int *srcDepInst,Node *perents){
-    if(perents != NULL)
-    {
-        *srcDepInst = perents->index;       
-    }
-    else
+    if(perents == NULL)
     {
         *srcDepInst = INVALID;
+    }
+    else{
+        *srcDepInst = perents->index;
     }
     return;
 }
