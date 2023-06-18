@@ -96,23 +96,23 @@ static int Max_Parent_Len(Node *node){
 
 static int Max_Len(Graph *graph, Node *node){
 
-    if (node->maxLen > 0)
+    if (node->maxLen <= 0)
     {
-        return node->maxLen;
-    } 
-    else 
-    {
-        int32_t num_of_inst = graph->instNodes.size();
-        for (int i = 0 ;i<num_of_inst ; i++)
-        {
-            Node *currInst = graph->instNodes[i];
-            if(currInst != NULL){
-            currInst->maxLen = Max_Parent_Len(currInst);
+            int32_t num_of_inst = graph->instNodes.size();
+            for (int i = 0 ;i<num_of_inst ; i++)
+            {
+                Node *currInst = graph->instNodes[i];
+                if(currInst != NULL){
+                currInst->maxLen = Max_Parent_Len(currInst);
+                }
             }
-        }
-        graph->dst->maxLen= Max_Parent_Len(graph->dst);
+            graph->dst->maxLen= Max_Parent_Len(graph->dst);
+    }
+    else{
+        return node->maxLen;
     }
     return node->maxLen;
+    
 }
 
 bool check_invalid(unsigned int theInst,Graph *cur_graph){
