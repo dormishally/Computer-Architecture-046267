@@ -112,7 +112,7 @@ static int Max_Len(Graph *graph, Node *node){
         return node->maxLen;
     }
     return node->maxLen;
-    
+
 }
 
 void updating_ins_indx(int *srcDepInst,Node *perents){
