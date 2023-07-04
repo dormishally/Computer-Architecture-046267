@@ -280,19 +280,16 @@ void CORE_FinegrainedMT() {
 /* Get thread register file through the context pointer */
 
 void CORE_BlockedMT_CTX(tcontext *context, int threadid) {
-    int regCounter = 0;
-    while(regCounter < REGS_COUNT) {
+
+    for(int regCounter = 0;regCounter < REGS_COUNT;++regCounter){
         context[threadid].reg[regCounter] = blocked_MT->threads[threadid].context.reg[regCounter];
-        ++regCounter;
     }
 	return;
 }
 
 void CORE_FinegrainedMT_CTX(tcontext *context, int threadid) {
-    int regCounter = 0;
-    while(regCounter < REGS_COUNT){
+    for(int regCounter = 0;regCounter < REGS_COUNT;++regCounter){
         context[threadid].reg[regCounter]=finegrained_MT->threads[threadid].context.reg[regCounter];
-        ++regCounter;
     }
 	return;
 }
