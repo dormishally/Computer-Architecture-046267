@@ -46,18 +46,16 @@ static int Mod (int num1, int num2)
 
 static bool IsAnyAwakeThread(MT_cpu_t* cpu,int threadnumber)
 {
-    int cur_thread = 0;
-    while (cur_thread<threadnumber)
+    for(int cur_thread = 0;cur_thread<threadnumber;cur_thread++)
     {
         if (cpu->threads[cur_thread].state_counter != -1)
         {
-            return true;
+           return true;
         }
-        cur_thread++;
     }
-
     return false;
 }
+
 
 static void initCpu(MT_cpu_t* MT_cpu,int threadnumber)
 {
